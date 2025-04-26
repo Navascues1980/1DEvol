@@ -1,13 +1,13 @@
 ## What is 1DEvol?
 
-1DEvol is  MATLAB package to carry out approximate Hamiltonian evolutions of 1D quantum systems, finite or infinite.
+1DEvol is  MATLAB package to carry out approximate Hamiltonian evolutions of 1D quantum systems, finite or infinite, through the hierarchy of semidefinite programming relaxations described in the paper [Non-commutative optimization problems with differential constraints](https://arxiv.org/abs/2408.02572).
 
 
 ## Installation
 
-You will need to have MATLAB and YALMIP \cite{yalmip} installed in your computer, and also a YALMIP-compatible solver, e.g.: Mosek \cite{mosek}.
+You will need to have the MATLAB package [YALMIP](https://github.com/yalmip/YALMIP) installed in your computer, and also a YALMIP-compatible solver, e.g.: [Mosek](https://www.mosek.com/).
 
-Once this is done, just uncompress the .zip file, copy the whole folder inside to your hard drive and add the latter to your MATLAB path.
+Once this is done, just copy all the files into a folder and add the latter to your MATLAB path.
 
 ## The basics
 
@@ -137,111 +137,107 @@ ans =
 ```
 
 
-The functions \texttt{Polynomial.n}, \texttt{Polynomial.degree}, \texttt{Polynomial.support}, \texttt{Polynomial.sparsity} respectively return the number of qubits for computations, the degree of the polynomial, the subset $S\subset \{1,...,n\}$ of qubits that appear in the polynomial and the number of monomials.
+The functions `Polynomial.n`, `Polynomial.degree`, `Polynomial.support`, `Polynomial.sparsity` respectively return the number of qubits for computations, the degree of the polynomial, the subset $`S\subset \{1,...,n\}`$ of qubits that appear in the polynomial and the number of monomials.
 
-The function \texttt{Polynomial.translate}$(p,j)$ applies the spin-chain translation operator $j$ times to the polynomial $p$.
+The function `Polynomial.translate`$`(p,j)`$ applies the spin-chain translation operator $j$ times to the polynomial $p$.
 
-\vspace{10pt}
+```
+p=Polynomial.sigma(1,1,10)*Polynomial.time(10)+4
 
-\noindent\texttt{p=Polynomial.sigma(1,1,10)*Polynomial.time(10)+4}
+p = 
++4+t\sigma^{(1)}_{1}
 
-\vspace{10pt}
+p.translate(5)
 
-\noindent\textbf{p = \\ \\+4+t$\backslash$sigma\^{}\{(1)\}\_\{1\}}
+ans =
 
-\vspace{10pt}
++4+t\sigma^{(6)}_{1}
 
-\noindent\texttt{p.translate(5)}
+```
 
-\vspace{10pt}
+The function `Polynomial.evaluate(poly1, poly2)` evaluates the Polynomial `poly1` by replacing its monomials with the corresponding coefficients of `poly2`. That is, `poly2` acts as a list of momenta: the monomial `poly2.list\_mon(k)` is understood to have the value `poly2.list_coeff(k)`. Of course, in order to evaluate `poly1` with `poly2`, it is necessary that the list of monomials of `poly2` contains that of `poly1`.
 
-\noindent\textbf{ans = \\ \\+4+t$\backslash$sigma\^{}\{(6)\}\_\{1\}}
 
-\vspace{10pt}
+### The Optimization Class
 
-The function \texttt{Polynomial.evaluate(poly1, poly2)} evaluates the Polynomial \texttt{poly1} by replacing its monomials with the corresponding coefficients of \texttt{poly2}. That is, \texttt{poly2} acts as a list of momenta: the monomial \texttt{poly2.list\_mon(k)} is understood to have value \texttt{poly2.list\_coeff(k)}. Of course, in order to evaluate \texttt{poly1} with \texttt{poly2}, it is necessary that the list of monomials of \texttt{poly2} contains that of \texttt{poly1}.
+The class `Optimization` handles SDP relaxations over 1D systems. Its constructor requires specifying a Hamiltonian term `h` and an objective function `obj`. Both are understood to be instances of the `Polynomial` class, be Hermitian and have no $\tilde{t}$ terms. In addition, `h` must be a polynomial acting on just the first two qubits, i.e., `isequal(h.support,[1,2])==true`. For $n$=`h.n`, the total Hamiltonian is taken to be:
 
-%The command \texttt{Polynomial.double(poly)} replaces the YALMIP coefficients of poly by their values after an optimization. The new polynomial can then be used to evaluate other polynomials through function \texttt{Polynomial.evaluate}.
+$$H_n=\sum_{j=0}^{n-1}\mathbb{T}^j(h)$$
 
-\section{The Optimization Class}
-The class \texttt{Optimization} handles SDP relaxations over 1D systems. Its constructor requires specifying a Hamiltonian term \texttt{h} and an objective function \texttt{obj}. Both are understood to be instances of the \texttt{Polynomial} class, be Hermitian and have no $\tilde{t}$ terms. In addition, \texttt{h} must be a polynomial acting on just the first two qubits, i.e., \texttt{h.support==[1,2]}. For $n$=\texttt{h.n}, the total Hamiltonian is taken to be:
-\begin{equation}
-H=\sum_{j=0}^{n-1}\mathbb{T}^j(h)
-\label{hami_finite}
-\end{equation}
 if the system is finite, or 
-\begin{equation}
-H=\sum_{j\in\mathbb{Z}}\mathbb{T}^j(h)
-\label{hami_infinite}
-\end{equation}
+
+$$H=\sum_{j\in\mathbb{Z}}\mathbb{T}^j(h)$$
+
 if the system is infinite. The objective function expresses which local property of the 1D system we wish to bound.
 
 For instance, the commands
-\vspace{10pt}
 
-\noindent\texttt{X1=Polynomial.sigma(1,1,5); Y2=Polynomial.sigma(2,2,5); Z1=Polynomial.sigma(3,1,5); h=X1*Y2; obj=Z1; optim=Optimization(h, obj);}
+```
+X1=Polynomial.sigma(1,1,5); Y2=Polynomial.sigma(2,2,5); Z1=Polynomial.sigma(3,1,5); h=X1*Y2; obj=Z1; optim=Optimization(h, obj);
+```  
+\noindent define an optimization problem with a Hamiltonian with general term $`h_{j,j+1}=\sigma^{(j)}_1\sigma^{(j+1)}_2`$ and set the magnetization of the first qubit $`\sigma^{(1)}_3`$ to be the objective function.
 
-\vspace{10pt}
-\noindent define an optimization problem with a Hamiltonian with general term $h_{j,j+1}=\sigma^{(j)}_1\sigma^{(j+1)}_2$ and set the magnetization of the first qubit $\sigma^{(1)}_3$ to be the objective function.
+Note that the instantiation of the \texttt{Optimization} class already has an implicit number of qubits $n$, encoded in the polynomials that make up `h` and `obj`. One can retrieve $n$ through the function `Optimization.n`.
 
-Note that the instantiation of the \texttt{Optimization} class already has an implicit number of qubits $n$, encoded in the polynomials that make up \texttt{h} and \texttt{obj}. One can retrieve $n$ through the function \texttt{Optimization.n}.
+```
 
-\vspace{10pt}
+optim.n
 
-\noindent\texttt{optim.n}
+ans =
+5
 
-\vspace{10pt}
-
-\noindent\textbf{ans = \\ \\5}
-
-\vspace{10pt}
-
-
+```
 
 What comes next depends on whether we wish to carry out calculations for finite or infinite systems.
 
-\subsection{Finite systems}
-Let $v$ be a vector of length $n=$\texttt{optim.n}, composed of 0s and 1s. If we call the function 
-\begin{center}
-\texttt{Optimization.bounds\_open(optim,tau,k\_sigma, k\_time,v))},     
-\end{center}
-\noindent we will obtain lower and upper bounds for the value of the objective function of the $n$-qubit system that, starting in state $\otimes_{k=1}^n \ket{v(k)}$, is propagated by the Hamiltonian (\ref{hami_finite}) for time \texttt{tau}. The natural numbers \texttt{k\_sigma, k\_time} respectively denote the parameters $k_\sigma$, $k_t$ of the SDP relaxation, see the main text.
 
-\vspace{10pt}
+## Estimating local properties of finite quantum 1D systems
+Let $v$ be a vector of length $`n=`$`optim.n`, composed of 0s and 1s. If we call the function `Optimization.bounds_open(optim,tau,k_sigma, k_time,v))`, we will obtain lower and upper bounds for the value of the objective function of the $n$-qubit system that, starting in state $`\otimes_{k=1}^n \ket{v(k)}`$, is propagated by the Hamiltonian (\ref{hami_finite}) for time \texttt{tau}. The natural numbers `k_sigma, k_time` respectively denote the parameters $`k_\sigma`$, $`k_t`$ of the SDP relaxation, see [arXiv:2408.02572](https://arxiv.org/abs/2408.02572).
 
-\noindent\texttt{[upp, low]=optim.bounds\_open(1,2, 2,[0,0,0,1,1])}
+```
 
-\vspace{10pt}
+[upp, low]=optim.bounds_open(1,2, 2,[0,0,0,1,1])
+
+```
 
 (some Mosek computations later...)
 
-\vspace{10pt}
+```
 
-\noindent\textbf{upp =\\ \\-0.0307\\ \\low = \\ \\-0.0347}
+upp =
+-0.0307
 
-\vspace{10pt}
+low =
+-0.0347
 
-If, instead of a real number, \texttt{tau} is a vector of real numbers, then the function returns a list of upper (lower) bounds for each time \texttt{tau(k)}.
+```
+
+If, instead of a real number, `tau` is a * *vector* * of real numbers, then the function returns a list of upper (lower) bounds for each time `tau(k)`.
 
 
 
-\subsection{Infinite systems}
-The function \texttt{Optimization.bounds(optim,tau,k\_sigma, k\_time)} has the effect of computing upper and lower bounds on the average value of the operator \texttt{optim.obj}, under the assumption that the system, initially prepared in state $\ket{0}^{\infty}$, has been subject to the Hamiltonian (\ref{hami_infinite}) for time \texttt{tau}. In this case, the parameter \texttt{optim.n} does not denote the number of qubits of the system, but the index $n$ of the corresponding SDP relaxation, see the main text.
+## Estimating local properties of finite quantum 1D systems
+The function `Optimization.bounds(optim,tau,k_sigma, k_time)` has the effect of computing upper and lower bounds on the average value of the operator `optim.obj`, under the assumption that the 1D system, initially prepared in state $`\ket{0}^{\infty}`$, has been subject to the Hamiltonian $H$ for time `tau`. In this case, the parameter `optim.n` does not denote the number of qubits in the system, but the index $n$ of the SDP relaxation, see [arXiv:2408.02572](https://arxiv.org/abs/2408.02572) for details.
 
-\vspace{10pt}
+```
 
-\noindent\texttt{[upp, low]=optim.bounds(1,2, 2)}
+[upp, low]=optim.bounds(1,2, 2)
 
-\vspace{10pt}
+```
 
 (some Mosek computations later...)
 
-\vspace{10pt}
+```
 
 
-\noindent\textbf{upp =\\ \\-0.1087\\low =\\ \\-0.6973}
+upp =
 
-\vspace{10pt}
+-0.1087
+low =
+
+-0.6973
+
+```
 
 
 
